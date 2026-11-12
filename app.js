@@ -75,6 +75,26 @@
     element.focus({ preventScroll: true });
     element.scrollIntoView({ block: "nearest" });
   }
+  function renderQuestionTitle(element, number, text, required) {
+    const parts = [];
+    if (required) {
+      const mark = document.createElement("span");
+      mark.className = "required-mark";
+      mark.textContent = "*";
+      mark.setAttribute("aria-hidden", "true");
+      const accessibleLabel = document.createElement("span");
+      accessibleLabel.className = "visually-hidden";
+      accessibleLabel.textContent = "必填，";
+      parts.push(mark, accessibleLabel);
+    }
+    const label = document.createElement("span");
+    label.className = "question-number";
+    label.textContent = `${number}. `;
+    const title = document.createElement("span");
+    title.className = "question-text";
+    title.textContent = text;
+    element.replaceChildren(...parts, label, title);
+  }
   function setView(view) {
     cancelAdvance();
     state.view = view;
@@ -118,7 +138,7 @@
     const moduleIndex = moduleQuestions.findIndex((item) => item.id === question.id);
     byId("question-category").textContent = `第 ${modules.indexOf(module) + 1} 站 · ${module.title}`;
     byId("question-count").textContent = `本节 ${moduleIndex + 1} / ${moduleQuestions.length}`;
-    byId("question-title").textContent = question.title;
+    renderQuestionTitle(byId("question-title"), state.index + 1, question.title, true);
     byId("answer-options").replaceChildren(...question.options.map((option) => {
       const label = document.createElement("label");
       label.className = "answer-option";
@@ -148,12 +168,12 @@
   function renderSupplements(focus = false) {
     setView("supplement");
     warmResult();
-    const createField = (field) => {
+    const createField = (field, index) => {
       const group = document.createElement(field.type === "multiple" ? "fieldset" : "div");
       group.className = "supplement-field";
       group.id = `field-${field.id}`;
       const title = document.createElement(field.type === "multiple" ? "legend" : "label");
-      title.textContent = `${field.title}${field.required ? "（必填）" : ""}`;
+      renderQuestionTitle(title, questions.length + index + 1, field.title, field.required);
       title.htmlFor = `supplement-${field.id}`;
       group.append(title);
       if (field.type === "multiple") {

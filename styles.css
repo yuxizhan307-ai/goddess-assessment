@@ -46,6 +46,8 @@ body[data-view="start"] .workspace, body[data-view="start"] .site-footer { displ
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .question-title { font-size: 21px; font-weight: 500; line-height: 1.65; padding: 0; margin-bottom: 24px; width: 100%; overflow-wrap: anywhere; }
 .question-title:focus, [tabindex="-1"]:focus { outline: none; }
+.required-mark { color: #ce303c; font-weight: 600; margin-right: 6px; }
+.question-number { font-variant-numeric: tabular-nums; }
 .answer-options { display: grid; gap: 11px; }
 .answer-option { position: relative; display: flex; align-items: flex-start; gap: 13px; border: 1px solid var(--line); background: #fff; border-radius: 5px; padding: 15px 16px; min-height: 58px; cursor: pointer; transition: border-color 150ms ease, background 150ms ease; }
 .answer-option:hover { background: #fcf7fa; border-color: #c99fb1; }
