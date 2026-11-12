@@ -14,7 +14,7 @@
   let advanceTimer;
   let qrFile;
   if (location.protocol === "https:" || location.protocol === "http:") {
-    fetch("./assets/wechat-qr.jpg").then((response) => {
+    fetch("./wechat-qr.jpg").then((response) => {
       if (!response.ok) throw new Error("QR image unavailable");
       return response.blob();
     }).then((blob) => { qrFile = new File([blob], "元一-微信二维码.jpg", { type: "image/jpeg" }); })
@@ -196,7 +196,7 @@
     setView("result");
     byId("result-type").textContent = report.name;
     byId("result-trait").textContent = report.summary;
-    byId("report-image").src = `./assets/${report.image}`;
+    byId("report-image").src = `./${report.image}`;
     byId("report-image").alt = report.name;
     if (focus) {
       window.scrollTo(0, 0);
