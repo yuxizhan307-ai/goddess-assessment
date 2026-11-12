@@ -9,16 +9,21 @@
   }
   const { questions, modules, supplements } = config;
   const storageKey = `assessment:${config.id}`;
-  const emptyState = () => ({ index: 0, view: "quiz", answers: {}, supplement: {} });
+  const emptyState = () => ({ index: 0, view: "start", answers: {}, supplement: {} });
   let state = emptyState();
   let advanceTimer;
-  let qrFile;
-  if (location.protocol === "https:" || location.protocol === "http:") {
-    fetch("./wechat-qr.jpg").then((response) => {
-      if (!response.ok) throw new Error("QR image unavailable");
-      return response.blob();
-    }).then((blob) => { qrFile = new File([blob], "元一-微信二维码.jpg", { type: "image/jpeg" }); })
-      .catch(() => { /* The original image remains available for long-press saving. */ });
+  const warmedImages = new Map();
+  const reportSource = (report) => `./${report.image.replace(/\.(jpg|png)$/, ".webp")}`;
+  function warmResult() {
+    if (!hasAllAnswers()) return;
+    const { report } = scoring.calculate(config, state.answers);
+    for (const src of [reportSource(report), "./wechat-qr.jpg", "./wechat-original.jpg"]) {
+      if (warmedImages.has(src)) continue;
+      const image = new Image();
+      image.fetchPriority = "high";
+      image.src = src;
+      warmedImages.set(src, image);
+    }
   }
   function cancelAdvance() {
     clearTimeout(advanceTimer);
@@ -27,11 +32,15 @@
   function hasAllAnswers() {
     return questions.every((question) => question.options.some((option) => option.id === state.answers[question.id]));
   }
+  function validField(field) {
+    const value = state.supplement[field.id];
+    if (field.type === "multiple") return Array.isArray(value) && value.length > 0
+      && value.every((id) => field.options.some((option) => option.id === id));
+    return typeof value === "string" && value.trim().length > 0
+      && value.trim().length <= (field.title === "微信号/微信名" ? 64 : 2000);
+  }
   function hasRequiredInfo() {
-    return supplements.filter((field) => field.required).every((field) => {
-      const value = state.supplement[field.id];
-      return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 64;
-    });
+    return supplements.filter((field) => field.required).every(validField);
   }
   // Storage is optional; blocked or malformed storage must not break the questionnaire.
   try {
@@ -44,6 +53,7 @@
       const firstUnanswered = questions.findIndex((question) => state.answers[question.id] === undefined);
       const maxIndex = firstUnanswered === -1 ? questions.length - 1 : firstUnanswered;
       state.index = Number.isInteger(saved.index) ? Math.max(0, Math.min(maxIndex, saved.index)) : 0;
+      if (["quiz", "supplement", "result"].includes(saved.view)) state.view = "quiz";
       if (["result", "supplement"].includes(saved.view) && hasAllAnswers()) state.view = saved.view;
       if (saved.supplement && typeof saved.supplement === "object") {
         for (const field of supplements) {
@@ -70,8 +80,12 @@
     state.view = view;
     document.body.dataset.view = view;
     document.body.dataset.question = String(state.index);
-    for (const name of ["quiz", "supplement", "result"]) byId(`${name}-view`).hidden = name !== view;
-    byId("journey-header").hidden = view === "result" || view === "supplement";
+    for (const name of ["start", "quiz", "supplement", "result"]) byId(`${name}-view`).hidden = name !== view;
+    byId("journey-header").hidden = view !== "quiz";
+  }
+  function renderStart() {
+    setView("start");
+    window.scrollTo(0, 0);
   }
   function renderProgress() {
     const question = questions[state.index];
@@ -133,14 +147,17 @@
   }
   function renderSupplements(focus = false) {
     setView("supplement");
+    warmResult();
     const createField = (field) => {
       const group = document.createElement(field.type === "multiple" ? "fieldset" : "div");
       group.className = "supplement-field";
+      group.id = `field-${field.id}`;
       const title = document.createElement(field.type === "multiple" ? "legend" : "label");
       title.textContent = `${field.title}${field.required ? "（必填）" : ""}`;
       title.htmlFor = `supplement-${field.id}`;
       group.append(title);
       if (field.type === "multiple") {
+        if (field.required) group.setAttribute("aria-required", "true");
         for (const option of field.options) {
           const label = document.createElement("label");
           label.className = "check-option";
@@ -148,6 +165,7 @@
           input.type = "checkbox";
           input.name = field.id;
           input.value = option.id;
+          input.setAttribute("aria-describedby", `error-${field.id}`);
           input.checked = (state.supplement[field.id] || []).includes(option.id);
           label.append(input, document.createTextNode(option.text));
           group.append(label);
@@ -157,29 +175,29 @@
         if (input.tagName === "INPUT") input.type = "text";
         input.id = `supplement-${field.id}`;
         input.name = field.id;
-        input.maxLength = field.required ? 64 : 2000;
+        input.maxLength = field.title === "微信号/微信名" ? 64 : 2000;
         if (field.required) {
           input.required = true;
           input.pattern = ".*\\S.*";
           input.autocomplete = "off";
           input.autocapitalize = "none";
           input.spellcheck = false;
-          input.setAttribute("aria-describedby", "contact-error");
+          input.setAttribute("aria-describedby", `error-${field.id}`);
         }
         input.value = state.supplement[field.id] || "";
         group.append(input);
       }
       if (field.required) {
         const error = document.createElement("p");
-        error.id = "contact-error";
+        error.id = `error-${field.id}`;
         error.className = "contact-error";
         error.setAttribute("role", "status");
         group.append(error);
       }
       return group;
     };
-    byId("required-fields").replaceChildren(...supplements.filter((field) => field.required).map(createField));
-    byId("supplement-fields").replaceChildren(...supplements.filter((field) => !field.required).map(createField));
+    byId("supplement-fields").replaceChildren(...supplements.map(createField));
+    validateFields();
     if (focus) focusHeading("supplement-title");
   }
   function renderResult(focus = false) {
@@ -196,8 +214,10 @@
     setView("result");
     byId("result-type").textContent = report.name;
     byId("result-trait").textContent = report.summary;
-    byId("report-image").src = `./${report.image}`;
+    byId("report-image").src = reportSource(report);
     byId("report-image").alt = report.name;
+    const teaser = document.querySelector(".report-teaser img");
+    teaser.src = teaser.dataset.src;
     if (focus) {
       window.scrollTo(0, 0);
       byId("result-type").tabIndex = -1;
@@ -211,6 +231,12 @@
       if (state.view === "quiz" && state.index === index) advanceQuestion();
     }, 320);
   }
+  byId("start-button").addEventListener("click", () => {
+    renderQuestion();
+    window.scrollTo(0, 0);
+    byId("question-title").focus({ preventScroll: true });
+    persist();
+  });
   byId("quiz-form").addEventListener("change", (event) => {
     if (event.target.name !== "answer") return;
     const question = questions[state.index];
@@ -248,30 +274,40 @@
     persist();
   });
   byId("supplement-button").addEventListener("click", () => { renderSupplements(true); persist(); });
-  byId("supplement-form").addEventListener("input", () => {
+  function readSupplementForm() {
     const data = new FormData(byId("supplement-form"));
     for (const field of supplements) state.supplement[field.id] = field.type === "multiple"
       ? data.getAll(field.id) : String(data.get(field.id) || "");
-    const requiredField = supplements.find((field) => field.required);
-    const input = byId(`supplement-${requiredField.id}`);
-    input.setCustomValidity("");
-    if (input.value && !input.value.trim()) {
-      input.setCustomValidity("请输入微信号，不能只填写空格。");
-      byId("contact-error").textContent = "请输入微信号，不能只填写空格。";
-    } else byId("contact-error").textContent = "";
+  }
+  function fieldControl(field) {
+    return byId(`field-${field.id}`).querySelector("input, textarea");
+  }
+  function validateFields(showErrors = false) {
+    for (const field of supplements.filter((item) => item.required)) {
+      const valid = validField(field);
+      const control = fieldControl(field);
+      const message = field.type === "multiple" ? "请至少选择一个你感兴趣的课程方向。" : "请填写微信号，不能只填写空格。";
+      control.setCustomValidity(valid ? "" : message);
+      if (field.type === "multiple") control.required = !valid;
+      byId(`error-${field.id}`).textContent = !valid && showErrors ? message : "";
+    }
+  }
+  byId("supplement-form").addEventListener("input", () => {
+    readSupplementForm();
+    validateFields();
     persist();
   });
+  byId("supplement-form").addEventListener("invalid", () => validateFields(true), true);
   byId("supplement-form").addEventListener("submit", (event) => {
     event.preventDefault();
+    readSupplementForm();
+    validateFields(true);
     if (!hasRequiredInfo()) {
-      const requiredField = supplements.find((field) => field.required);
-      const input = byId(`supplement-${requiredField.id}`);
-      byId("contact-error").textContent = "请先填写微信号。";
-      input.setCustomValidity("请先填写微信号。");
-      input.reportValidity();
+      const field = supplements.find((item) => item.required && !validField(item));
+      fieldControl(field).reportValidity();
       return;
     }
-    for (const field of supplements.filter((item) => item.required)) {
+    for (const field of supplements.filter((item) => item.required && item.type === "text")) {
       state.supplement[field.id] = state.supplement[field.id].trim();
     }
     renderResult(true);
@@ -282,22 +318,10 @@
     renderQuestion(true);
     persist();
   });
-  byId("save-qr").addEventListener("click", async () => {
-    const button = byId("save-qr");
-    const status = byId("save-status");
-    status.textContent = "";
-    try {
-      if (qrFile && navigator.share && navigator.canShare?.({ files: [qrFile] })) {
-        button.disabled = true;
-        await navigator.share({ files: [qrFile] });
-        status.textContent = "已关闭系统分享窗口。";
-      } else byId("save-dialog").showModal();
-    } catch (error) {
-      if (error.name !== "AbortError") {
-        status.textContent = "此浏览器暂不支持系统保存，可长按图片保存。";
-        byId("save-dialog").showModal();
-      }
-    } finally { button.disabled = false; }
+  byId("view-card").addEventListener("click", () => {
+    const image = document.querySelector("#save-dialog > img");
+    image.src = image.dataset.src;
+    byId("save-dialog").showModal();
   });
   byId("close-save").addEventListener("click", () => byId("save-dialog").close());
   window.addEventListener("pagehide", cancelAdvance);
@@ -310,13 +334,13 @@
   byId("cancel-restart").addEventListener("click", () => byId("restart-dialog").close());
   byId("confirm-restart").addEventListener("click", () => {
     state = emptyState();
-    byId("required-fields").replaceChildren();
     byId("supplement-fields").replaceChildren();
     byId("restart-dialog").close();
-    renderQuestion(true);
+    renderStart();
     persist();
   });
   if (state.view === "result") renderResult();
   else if (state.view === "supplement") renderSupplements();
-  else renderQuestion();
+  else if (state.view === "quiz") renderQuestion();
+  else renderStart();
 })();

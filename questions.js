@@ -1,5 +1,5 @@
 window.assessmentConfig = {
-  "id": "goddess-reviewed-v5-required-contact",
+  "id": "goddess-reviewed-v6-start-survey",
   "scoring": {
     "method": "range-equating-v1",
     "questionCount": 21,
@@ -727,7 +727,7 @@ window.assessmentConfig = {
           "text": "F.其他"
         }
       ],
-      "required": false
+      "required": true
     },
     {
       "id": "fldKn0l2wK",

@@ -7,18 +7,22 @@
     <meta name="description" content="灵性魅力女神原型测评，遇见真实的自己。">
     <title>灵性魅力 · 女神原型测评 | 元一</title>
     <link rel="icon" href="./avatar.jpg">
-    <link rel="stylesheet" href="./styles.css">
-    <script defer src="./questions.js"></script>
-    <script defer src="./scoring.js"></script>
-    <script defer src="./app.js"></script>
+    <link rel="preload" as="image" href="./poster-portrait.webp" fetchpriority="high">
+    <link rel="stylesheet" href="./styles.css?v=20261112-2">
+    <script defer src="./questions.js?v=20261112-2"></script>
+    <script defer src="./scoring.js?v=20261112-2"></script>
+    <script defer src="./app.js?v=20261112-2"></script>
   </head>
-  <body data-view="quiz" data-question="0">
+  <body data-view="start" data-question="0">
     <h1 class="visually-hidden">灵性魅力女神原型测评</h1>
     <main class="experience">
-      <aside class="artwork">
-        <img src="./poster-portrait.jpg" width="1280" height="1708"
+      <section id="start-view" class="start-view" aria-label="开始测评">
+        <img src="./poster-portrait.webp" width="1280" height="1708" fetchpriority="high"
           alt="测测你的灵性魅力女神原型，女侠、美人鱼、静心女子与公主的完整竖版画面">
-      </aside>
+        <div class="start-actions">
+          <button id="start-button" type="button" class="primary-button">开始测试</button>
+        </div>
+      </section>
       <section class="workspace" aria-label="测评">
         <div id="journey-header" class="journey-header">
           <nav aria-label="测评模块"><ol id="module-steps" class="module-steps"></ol></nav>
@@ -50,14 +54,10 @@
         </div>
         <section id="supplement-view" class="supplement-view" aria-labelledby="supplement-title" hidden>
           <p class="eyebrow">最后一步</p>
-          <h2 id="supplement-title" tabindex="-1">留下你的微信号</h2>
-          <p class="supplement-description">微信号为必填，其余信息可选填。内容仅保存在此设备，不会自动发送给元一。</p>
+          <h2 id="supplement-title" tabindex="-1">再多了解你一点</h2>
+          <p class="supplement-description">课程方向与微信号为必填，其余可选填。内容仅保存在此设备，不会自动发送给元一。</p>
           <form id="supplement-form">
-            <div id="required-fields"></div>
-            <details class="optional-details">
-              <summary>其他补充信息（选填）</summary>
-              <div id="supplement-fields"></div>
-            </details>
+            <div id="supplement-fields"></div>
             <div class="supplement-actions">
               <button type="submit" class="primary-button">查看我的简报</button>
               <button id="supplement-back" type="button" class="text-button">返回上一题</button>
@@ -71,7 +71,7 @@
             <p id="result-trait" class="result-trait"></p>
           </header>
           <figure id="report-figure" class="report-figure">
-            <img id="report-image" width="1440" height="1440" alt="" tabindex="-1">
+            <img id="report-image" width="720" height="720" fetchpriority="high" decoding="async" alt="" tabindex="-1">
           </figure>
           <section class="full-report" aria-labelledby="contact-title">
             <h2 id="contact-title">扫码解锁完整版报告</h2>
@@ -83,8 +83,8 @@
                 <span>元一<span class="contact-tag">扫码添加，领取你的专属解读</span></span>
               </figcaption>
             </figure>
-            <button id="save-qr" type="button" class="primary-button save-button">保存二维码</button>
-            <p id="save-status" class="save-status" role="status"></p>
+            <a id="save-qr" class="primary-button save-button" href="./wechat-original.jpg" download="元一-微信联系卡.jpg">保存二维码</a>
+            <button id="view-card" type="button" class="text-button view-card">查看完整联系卡</button>
             <div class="after-qr">
               <h3>是时候找回<br>真正的自己了。</h3>
               <p>在完整版里，你会看到专属你的<br><strong>天赋优势、灵魂课题 &amp; 破局方案</strong></p>
@@ -92,7 +92,7 @@
           </section>
           <section class="report-teaser" aria-label="完整版报告示意">
             <p>完整版报告示意</p>
-            <img src="./full-report-preview.png" width="1536" height="2304" alt="完整版报告示意图">
+            <img data-src="./full-report-preview.webp" width="720" height="1080" loading="lazy" decoding="async" fetchpriority="low" alt="完整版报告示意图">
             <span>扫码后，领取属于你的完整解读</span>
           </section>
           <div class="report-actions">
@@ -117,10 +117,10 @@
     <dialog id="save-dialog" class="save-dialog" aria-labelledby="save-title">
       <h2 id="save-title">保存联系二维码</h2>
       <p>手机中可长按下图，选择“保存到相册”。</p>
-      <img src="./wechat-qr.jpg" width="656" height="656" alt="元一的微信联系二维码，可长按保存">
+      <img data-src="./wechat-original.jpg" width="888" height="1131" alt="元一的完整微信联系卡，含头像、昵称及二维码">
       <div class="dialog-actions">
         <button id="close-save" type="button" class="text-button">关闭</button>
-        <a class="primary-button" href="./wechat-qr.jpg" download="元一-微信二维码.jpg">下载图片</a>
+        <a class="primary-button" href="./wechat-original.jpg" download="元一-微信联系卡.jpg">下载图片</a>
       </div>
     </dialog>
   </body>
